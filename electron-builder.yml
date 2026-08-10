@@ -1,0 +1,48 @@
+appId: com.mdreader.app
+productName: MD Reader
+copyright: MD Reader
+
+directories:
+  output: release
+  buildResources: build
+
+files:
+  - out/**/*
+  - resources/icon.ico
+  - package.json
+
+asar: true
+asarUnpack:
+  - node_modules/@github/copilot-*/**
+  - node_modules/@github/copilot/**
+
+electronLanguages:
+  - pt-BR
+  - en-US
+
+win:
+  icon: resources/icon.ico
+  target:
+    - target: nsis
+      arch: [x64]
+    - target: portable
+      arch: [x64]
+
+# Instalação por usuário: não exige privilégio de administrador.
+nsis:
+  oneClick: false
+  perMachine: false
+  allowElevation: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: MD Reader
+  deleteAppDataOnUninstall: false
+  installerLanguages:
+    - pt_BR
+  language: '1046'
+  artifactName: MDReader-${version}-setup.${ext}
+
+portable:
+  artifactName: MDReader-${version}-portable.${ext}
+  unicode: true

@@ -1,0 +1,83 @@
+@media print {
+  @page {
+    margin: 18mm 16mm;
+  }
+
+  html,
+  body {
+    height: auto;
+    overflow: visible;
+    background: #ffffff !important;
+    color: #000000 !important;
+  }
+
+  /* O PDF/impressão sai sempre em tema claro, sem cromo de UI. */
+  body[data-theme='dark'] {
+    --bg: #ffffff;
+    --bg-soft: #f6f8fa;
+    --bg-alt: #fafbfc;
+    --fg: #000000;
+    --fg-muted: #444c56;
+    --border: #d0d7de;
+    --border-strong: #afb8c1;
+    --accent: #0b5cad;
+    --code-bg: #f6f8fa;
+    --code-inline-bg: rgba(175, 184, 193, 0.2);
+  }
+
+  .titlebar,
+  .toc,
+  .status-bar,
+  .search-bar,
+  .notice,
+  .drop-overlay,
+  .copilot-panel,
+  .toc-resizer,
+  .copy-btn,
+  .code-lang,
+  .heading-anchor,
+  .empty-state {
+    display: none !important;
+  }
+
+  #app,
+  .main,
+  .scroller {
+    display: block;
+    overflow: visible;
+    height: auto;
+  }
+
+  .markdown-body {
+    max-width: none;
+    padding: 0;
+    font-size: 11.5pt;
+    color: #000000;
+  }
+
+  .markdown-body a {
+    color: #000000;
+    text-decoration: underline;
+  }
+
+  .markdown-body h1,
+  .markdown-body h2,
+  .markdown-body h3 {
+    break-after: avoid;
+    page-break-after: avoid;
+  }
+
+  .code-pre,
+  .markdown-body table,
+  .markdown-body blockquote,
+  .mermaid-block,
+  .markdown-body img {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .code-pre {
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+}

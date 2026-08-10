@@ -1,0 +1,25 @@
+# Dependências
+node_modules/
+
+# Build
+out/
+dist/
+release/
+
+# Logs e caches
+*.log
+npm-debug.log*
+.eslintcache
+.vite/
+
+# Ambiente e segredos
+.env
+.env.*
+
+# Editores e SO
+.vscode/
+.idea/
+Thumbs.db
+Desktop.ini
+*.suo
+*.user

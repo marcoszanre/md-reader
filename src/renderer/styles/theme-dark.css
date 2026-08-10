@@ -1,0 +1,64 @@
+body[data-theme='dark'] {
+  --bg: #0d1117;
+  --bg-soft: #161b22;
+  --bg-alt: #12171e;
+  --bg-elevated: #1c2128;
+  --bg-hover: #21262d;
+  --fg: #e6edf3;
+  --fg-muted: #8b949e;
+  --border: #30363d;
+  --border-strong: #484f58;
+  --accent: #8b7cf6;
+  --accent-soft: #241f47;
+  --danger: #f85149;
+  --code-bg: #161b22;
+  --code-inline-bg: rgba(110, 118, 129, 0.4);
+  --notice-bg: #2d2611;
+  --notice-fg: #f2cc60;
+  --shadow: rgba(1, 4, 9, 0.7);
+  --drop-bg: rgba(13, 17, 23, 0.85);
+  --search-bg: #342c63;
+  --search-fg: #ddd6fe;
+  --search-active-bg: #8b7cf6;
+  --search-active-fg: #0d1117;
+  --scrollbar-thumb: #30363d;
+  --scrollbar-thumb-hover: #4b5563;
+  --scrollbar-track: transparent;
+}
+
+body[data-theme='dark'] .hljs-comment,
+body[data-theme='dark'] .hljs-quote {
+  color: #8b949e;
+  font-style: italic;
+}
+body[data-theme='dark'] .hljs-keyword,
+body[data-theme='dark'] .hljs-selector-tag,
+body[data-theme='dark'] .hljs-literal,
+body[data-theme='dark'] .hljs-type {
+  color: #ff7b72;
+}
+body[data-theme='dark'] .hljs-string,
+body[data-theme='dark'] .hljs-regexp,
+body[data-theme='dark'] .hljs-addition {
+  color: #a5d6ff;
+}
+body[data-theme='dark'] .hljs-number,
+body[data-theme='dark'] .hljs-symbol,
+body[data-theme='dark'] .hljs-built_in {
+  color: #79c0ff;
+}
+body[data-theme='dark'] .hljs-title,
+body[data-theme='dark'] .hljs-section,
+body[data-theme='dark'] .hljs-function .hljs-title {
+  color: #d2a8ff;
+}
+body[data-theme='dark'] .hljs-attr,
+body[data-theme='dark'] .hljs-attribute,
+body[data-theme='dark'] .hljs-variable,
+body[data-theme='dark'] .hljs-template-variable {
+  color: #ffa657;
+}
+body[data-theme='dark'] .hljs-meta,
+body[data-theme='dark'] .hljs-deletion {
+  color: #ffa198;
+}
