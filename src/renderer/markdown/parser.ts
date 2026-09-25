@@ -162,7 +162,9 @@ function createBase(): MarkdownIt {
     const blockAttr = token.attrGet(BLOCK_ATTR)
     const mapAttr = blockAttr ? ` ${BLOCK_ATTR}="${escapeAttr(blockAttr)}"` : ''
     if (info === 'mermaid') {
-      return `<div class="mermaid-block"${mapAttr} data-mermaid="${escapeAttr(token.content)}"><div class="mermaid-render">Rendering diagram…</div></div>`
+      // URI-encoded: DOMPurify drops attribute values containing `-->`, which is Mermaid's arrow syntax.
+      const source = escapeAttr(encodeURIComponent(token.content))
+      return `<div class="mermaid-block"${mapAttr} data-mermaid="${source}"><div class="mermaid-render">Rendering diagram…</div></div>`
     }
     // The default fence renderer would copy the source-map attribute onto `<pre>`; the wrapper carries it instead.
     if (blockAttr) token.attrs = token.attrs?.filter(([name]) => name !== BLOCK_ATTR) ?? null

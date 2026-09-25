@@ -11,6 +11,12 @@ $extensions = @('.md', '.markdown', '.mdown', '.mkd')
 $appKeyName = 'MDReader.exe'
 $progId = 'MDReader.Document'
 
+# New-Item -Force on an existing registry key recreates it and deletes its values (for example,
+# other apps' OpenWithProgids entries), so keys are only created when missing.
+function Ensure-Key($path) {
+    if (-not (Test-Path $path)) { New-Item -Path $path -Force | Out-Null }
+}
+
 function Remove-KeyIfExists($path) {
     if (Test-Path $path) { Remove-Item -Path $path -Recurse -Force }
 }
@@ -35,23 +41,23 @@ if (-not (Test-Path $ExePath)) { throw "Executable not found: $ExePath" }
 $command = '"' + $ExePath + '" "%1"'
 
 # ProgId: defines the icon, friendly name, and open command.
-New-Item -Path "HKCU:\Software\Classes\$progId\shell\open\command" -Force | Out-Null
+Ensure-Key "HKCU:\Software\Classes\$progId\shell\open\command"
 Set-ItemProperty -Path "HKCU:\Software\Classes\$progId" -Name '(default)' -Value 'Markdown document'
-New-Item -Path "HKCU:\Software\Classes\$progId\DefaultIcon" -Force | Out-Null
+Ensure-Key "HKCU:\Software\Classes\$progId\DefaultIcon"
 Set-ItemProperty -Path "HKCU:\Software\Classes\$progId\DefaultIcon" -Name '(default)' -Value "$ExePath,0"
 Set-ItemProperty -Path "HKCU:\Software\Classes\$progId\shell\open\command" -Name '(default)' -Value $command
 
 # Applications\MDReader.exe makes the app appear in the "Open with" list.
 $appKey = "HKCU:\Software\Classes\Applications\$appKeyName"
-New-Item -Path "$appKey\shell\open\command" -Force | Out-Null
+Ensure-Key "$appKey\shell\open\command"
 Set-ItemProperty -Path $appKey -Name 'FriendlyAppName' -Value 'MD Reader'
 Set-ItemProperty -Path "$appKey\shell\open\command" -Name '(default)' -Value $command
-New-Item -Path "$appKey\DefaultIcon" -Force | Out-Null
+Ensure-Key "$appKey\DefaultIcon"
 Set-ItemProperty -Path "$appKey\DefaultIcon" -Name '(default)' -Value "$ExePath,0"
-New-Item -Path "$appKey\SupportedTypes" -Force | Out-Null
+Ensure-Key "$appKey\SupportedTypes"
 foreach ($ext in $extensions) {
     Set-ItemProperty -Path "$appKey\SupportedTypes" -Name $ext -Value ''
-    New-Item -Path "HKCU:\Software\Classes\$ext\OpenWithProgids" -Force | Out-Null
+    Ensure-Key "HKCU:\Software\Classes\$ext\OpenWithProgids"
     Set-ItemProperty -Path "HKCU:\Software\Classes\$ext\OpenWithProgids" -Name $progId -Value ([byte[]]@()) -Type Binary
 }
 

@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { renderMarkdown, extractFrontMatter, hasMathDelimiters, hasMermaidBlocks, slugify } from '../src/renderer/markdown/parser'
 import { sanitizeSvg } from '../src/renderer/markdown/sanitize'
+import { mermaidSource } from '../src/renderer/markdown/mermaid'
 
 const opts = { docDir: 'C:/docs' }
 
@@ -80,6 +81,13 @@ describe('render', () => {
     const { html, hasMermaid } = await renderMarkdown('```mermaid\ngraph TD;\nA-->B;\n```', opts)
     expect(hasMermaid).toBe(true)
     expect(html).toContain('class="mermaid-block"')
+  })
+
+  it('keeps the Mermaid source intact through the sanitizer, arrows included', async () => {
+    const source = 'flowchart LR\n  A --> B\n  B -.-> C\n'
+    const { html } = await renderMarkdown(`\`\`\`mermaid\n${source}\`\`\``, opts)
+    const block = new DOMParser().parseFromString(html, 'text/html').querySelector<HTMLElement>('.mermaid-block')!
+    expect(mermaidSource(block)).toBe(source)
   })
 
   it('adds a copy button to code blocks', async () => {

@@ -764,10 +764,13 @@ async function copySource(): Promise<void> {
     showNotice('Unable to copy to the clipboard. Please try again.')
   }
   if (copySourceFeedback !== null) window.clearTimeout(copySourceFeedback)
+  // Keep the button's width while it shows feedback, so the status bar does not shift.
+  copySourceBtn.style.minWidth = `${copySourceBtn.offsetWidth}px`
   copySourceBtn.textContent = label
   copySourceFeedback = window.setTimeout(() => {
     copySourceFeedback = null
     copySourceBtn.classList.remove('copied')
+    copySourceBtn.style.minWidth = ''
     updateEditControls()
   }, 1400)
 }

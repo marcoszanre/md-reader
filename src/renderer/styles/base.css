@@ -1194,7 +1194,9 @@ body[data-width='full'] .markdown-body {
 
 /* Drop secondary information before any command is squeezed. */
 @media (max-width: 1500px) {
-  body.editing .status-stats {
+  body.editing .status-stats,
+  body.editing .status-file,
+  body.editing .copy-path-btn {
     display: none;
   }
 }

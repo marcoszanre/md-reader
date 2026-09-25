@@ -12,6 +12,10 @@ make network requests to render your document.
 ![Platform](https://img.shields.io/badge/Windows-10%20%7C%2011-0078D6?logo=windows&logoColor=white)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
+![MD Reader: reading with the minimap, editing a paragraph in place, and copying the Markdown source](docs/assets/demo.gif)
+
+**[⬇ Download the latest release](https://github.com/marcoszanre/md-reader/releases/latest)**: installer or portable executable.
+
 ---
 
 ## Why it exists

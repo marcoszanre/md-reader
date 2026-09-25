@@ -28,6 +28,16 @@ export function cleanupStrays(id?: string): void {
   document.querySelectorAll('body > [id^="dmermaid-"], body > [id^="mermaid-"]').forEach((node) => node.remove())
 }
 
+/** Diagram source as stored by the parser (URI-encoded in `data-mermaid`). */
+export function mermaidSource(block: HTMLElement): string {
+  const raw = block.dataset.mermaid ?? ''
+  try {
+    return decodeURIComponent(raw)
+  } catch {
+    return raw
+  }
+}
+
 /** Renders diagrams asynchronously; a broken diagram must not crash the page. */
 export async function renderMermaidBlocks(root: HTMLElement, dark: boolean): Promise<void> {
   const blocks = Array.from(root.querySelectorAll<HTMLElement>('.mermaid-block'))
@@ -42,7 +52,7 @@ export async function renderMermaidBlocks(root: HTMLElement, dark: boolean): Pro
   }
 
   for (const block of blocks) {
-    const source = block.dataset.mermaid ?? ''
+    const source = mermaidSource(block)
     const target = block.querySelector<HTMLElement>('.mermaid-render')
     if (!target) continue
     const id = `mermaid-${++counter}`
@@ -69,7 +79,7 @@ function showFallback(block: HTMLElement, message: string): void {
   const pre = document.createElement('pre')
   pre.className = 'code-pre'
   const code = document.createElement('code')
-  code.textContent = block.dataset.mermaid ?? ''
+  code.textContent = mermaidSource(block)
   pre.appendChild(code)
   target.append(warning, pre)
 }
