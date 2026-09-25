@@ -11,7 +11,7 @@
     color: #000000 !important;
   }
 
-  /* O PDF/impressão sai sempre em tema claro, sem cromo de UI. */
+  /* PDF/print output is always light themed, without UI chrome. */
   body[data-theme='dark'] {
     --bg: #ffffff;
     --bg-soft: #f6f8fa;
@@ -32,6 +32,8 @@
   .notice,
   .drop-overlay,
   .copilot-panel,
+  .block-add,
+  .minimap,
   .toc-resizer,
   .copy-btn,
   .code-lang,
@@ -42,7 +44,9 @@
 
   #app,
   .main,
+  .reader,
   .scroller {
+    padding-right: 0 !important;
     display: block;
     overflow: visible;
     height: auto;

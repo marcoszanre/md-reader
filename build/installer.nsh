@@ -1,5 +1,5 @@
-; Página opcional (desmarcada por padrão) para associar extensões de Markdown.
-; A associação é gravada em HKCU — nenhum privilégio de administrador é exigido.
+; Optional page, unchecked by default, for associating Markdown extensions.
+; The association is written to HKCU, so administrator privileges are not required.
 
 !include nsDialogs.nsh
 !include LogicLib.nsh
@@ -12,17 +12,17 @@ Var MdAssocState
 !macroend
 
 Function mdAssocPageCreate
-  !insertmacro MUI_HEADER_TEXT "Associação de arquivos" "Escolha se o MD Reader deve abrir arquivos Markdown."
+  !insertmacro MUI_HEADER_TEXT "File association" "Choose whether MD Reader should open Markdown files."
   nsDialogs::Create 1018
   Pop $0
   ${If} $0 == error
     Abort
   ${EndIf}
 
-  ${NSD_CreateLabel} 0 0 100% 24u "Você pode associar os arquivos Markdown ao MD Reader para abri-los com duplo clique. Isso altera apenas as configurações do seu usuário."
+  ${NSD_CreateLabel} 0 0 100% 24u "You can associate Markdown files with MD Reader so they open on double-click. This changes only your user settings."
   Pop $1
 
-  ${NSD_CreateCheckbox} 0 32u 100% 12u "Associar arquivos .md, .markdown, .mdown e .mkd ao MD Reader"
+  ${NSD_CreateCheckbox} 0 32u 100% 12u "Associate .md, .markdown, .mdown, and .mkd files with MD Reader"
   Pop $MdAssocCheckbox
   ${NSD_SetState} $MdAssocCheckbox ${BST_UNCHECKED}
 
@@ -46,7 +46,7 @@ FunctionEnd
 
 !macro customInstall
   ${If} $MdAssocState == ${BST_CHECKED}
-    WriteRegStr HKCU "Software\Classes\MDReader.Document" "" "Documento Markdown"
+    WriteRegStr HKCU "Software\Classes\MDReader.Document" "" "Markdown document"
     WriteRegStr HKCU "Software\Classes\MDReader.Document\DefaultIcon" "" "$INSTDIR\${APP_EXECUTABLE_FILENAME},0"
     WriteRegStr HKCU "Software\Classes\MDReader.Document\shell\open\command" "" '"$INSTDIR\${APP_EXECUTABLE_FILENAME}" "%1"'
     !insertmacro RegisterMdExtension ".md"

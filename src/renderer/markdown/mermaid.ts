@@ -6,7 +6,7 @@ let mermaidPromise: Promise<MermaidModule> | null = null
 let counter = 0
 
 async function getMermaid(dark: boolean): Promise<MermaidModule> {
-  // Mermaid é pesado: só é importado quando o documento tem um bloco `mermaid`.
+  // Mermaid is heavy, so import it only when the document has a `mermaid` block.
   mermaidPromise ??= import('mermaid').then((mod) => mod.default)
   const mermaid = await mermaidPromise
   mermaid.initialize({
@@ -20,15 +20,15 @@ async function getMermaid(dark: boolean): Promise<MermaidModule> {
 }
 
 /**
- * O Mermaid cria um elemento temporário no `body` para medir o diagrama e, em
- * caso de erro, pode deixá-lo para trás. Removemos qualquer resíduo.
+ * Mermaid creates a temporary element in `body` to measure the diagram and can
+ * leave it behind on errors. Remove any residue.
  */
 export function cleanupStrays(id?: string): void {
   if (id) document.getElementById(`d${id}`)?.remove()
   document.querySelectorAll('body > [id^="dmermaid-"], body > [id^="mermaid-"]').forEach((node) => node.remove())
 }
 
-/** Renderiza os diagramas de forma assíncrona; um diagrama quebrado não derruba a página. */
+/** Renders diagrams asynchronously; a broken diagram must not crash the page. */
 export async function renderMermaidBlocks(root: HTMLElement, dark: boolean): Promise<void> {
   const blocks = Array.from(root.querySelectorAll<HTMLElement>('.mermaid-block'))
   if (blocks.length === 0) return
@@ -37,7 +37,7 @@ export async function renderMermaidBlocks(root: HTMLElement, dark: boolean): Pro
   try {
     mermaid = await getMermaid(dark)
   } catch {
-    for (const block of blocks) showFallback(block, 'Não foi possível carregar o Mermaid.')
+    for (const block of blocks) showFallback(block, 'Could not load Mermaid.')
     return
   }
 
@@ -51,7 +51,7 @@ export async function renderMermaidBlocks(root: HTMLElement, dark: boolean): Pro
       target.innerHTML = sanitizeSvg(svg)
       block.classList.add('mermaid-ok')
     } catch (err) {
-      showFallback(block, err instanceof Error ? err.message : 'Diagrama inválido.')
+      showFallback(block, err instanceof Error ? err.message : 'Invalid diagram.')
     } finally {
       cleanupStrays(id)
     }
@@ -65,7 +65,7 @@ function showFallback(block: HTMLElement, message: string): void {
   target.textContent = ''
   const warning = document.createElement('p')
   warning.className = 'mermaid-warning'
-  warning.textContent = `Diagrama Mermaid inválido: ${message}`
+  warning.textContent = `Invalid Mermaid diagram: ${message}`
   const pre = document.createElement('pre')
   pre.className = 'code-pre'
   const code = document.createElement('code')

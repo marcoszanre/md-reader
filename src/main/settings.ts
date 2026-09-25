@@ -1,7 +1,7 @@
 import { app } from 'electron'
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs'
 import { join, dirname, isAbsolute } from 'node:path'
-import { isMarkdownPath } from './file-handler'
+import { isOpenablePath } from './file-handler'
 import {
   DEFAULT_SETTINGS,
   MAX_RECENT_FILES,
@@ -27,6 +27,7 @@ function coerce(raw: unknown): Settings {
   if (r.theme === 'light' || r.theme === 'dark' || r.theme === 'system') out.theme = r.theme
   if (typeof r.zoom === 'number' && Number.isFinite(r.zoom)) out.zoom = Math.min(3, Math.max(0.5, r.zoom))
   if (typeof r.tocVisible === 'boolean') out.tocVisible = r.tocVisible
+  if (typeof r.minimapVisible === 'boolean') out.minimapVisible = r.minimapVisible
   if (typeof r.tocWidth === 'number' && Number.isFinite(r.tocWidth)) {
     out.tocWidth = Math.min(MAX_TOC_WIDTH, Math.max(MIN_TOC_WIDTH, Math.round(r.tocWidth)))
   }
@@ -36,9 +37,9 @@ function coerce(raw: unknown): Settings {
   if (r.readingWidth === 'comfortable' || r.readingWidth === 'full') out.readingWidth = r.readingWidth
   if (typeof r.loadRemoteImages === 'boolean') out.loadRemoteImages = r.loadRemoteImages
   if (Array.isArray(r.recentFiles)) {
-    // Apenas caminhos absolutos de arquivos Markdown entram na lista.
+    // Only absolute paths for files the app can open are stored in the list.
     out.recentFiles = r.recentFiles
-      .filter((p): p is string => typeof p === 'string' && isAbsolute(p) && isMarkdownPath(p))
+      .filter((p): p is string => typeof p === 'string' && isAbsolute(p) && isOpenablePath(p))
       .slice(0, MAX_RECENT_FILES)
   }
   const b = r.windowBounds as Record<string, unknown> | undefined
@@ -47,7 +48,7 @@ function coerce(raw: unknown): Settings {
     const height = typeof b.height === 'number' && Number.isFinite(b.height) ? b.height : null
     if (width !== null && height !== null) {
       out.windowBounds = {
-        // x/y podem ser negativos em monitores à esquerda/acima do principal.
+        // x/y may be negative on displays to the left of or above the primary display.
         x: typeof b.x === 'number' && Number.isFinite(b.x) ? Math.round(b.x) : null,
         y: typeof b.y === 'number' && Number.isFinite(b.y) ? Math.round(b.y) : null,
         width: Math.max(400, Math.round(width)),
@@ -63,7 +64,7 @@ export function getSettings(): Settings {
   try {
     cache = coerce(JSON.parse(readFileSync(settingsPath(), 'utf8')))
   } catch {
-    // Settings corrompidos ou inexistentes: usar defaults, nunca crashar.
+    // Corrupt or missing settings: use defaults and never crash.
     cache = coerce(null)
   }
   return cache
@@ -76,7 +77,7 @@ export function setSettings(patch: Partial<Settings>): Settings {
     mkdirSync(dirname(settingsPath()), { recursive: true })
     writeFileSync(settingsPath(), JSON.stringify(next, null, 2), 'utf8')
   } catch {
-    // Falha de escrita não deve derrubar o app.
+    // A write failure must not crash the app.
   }
   return next
 }

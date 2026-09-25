@@ -5,10 +5,10 @@ import { currentPathOf } from './window'
 
 export async function exportPdf(win: BrowserWindow): Promise<string | null> {
   const source = currentPathOf(win)
-  const suggested = source ? basename(source).replace(/\.[^.]+$/, '') + '.pdf' : 'documento.pdf'
+  const suggested = source ? basename(source).replace(/\.[^.]+$/, '') + '.pdf' : 'document.pdf'
 
   const result = await dialog.showSaveDialog(win, {
-    title: 'Exportar para PDF',
+    title: 'Export to PDF',
     defaultPath: source ? join(dirname(source), suggested) : suggested,
     filters: [{ name: 'PDF', extensions: ['pdf'] }]
   })
@@ -25,9 +25,9 @@ export async function exportPdf(win: BrowserWindow): Promise<string | null> {
   } catch {
     await dialog.showMessageBox(win, {
       type: 'error',
-      title: 'Falha ao exportar',
-      message: 'Não foi possível gerar o PDF.',
-      detail: 'Verifique se você tem permissão de escrita na pasta escolhida e tente novamente.'
+      title: 'Export failed',
+      message: 'Could not generate the PDF.',
+      detail: 'Verify that you have write permission in the selected folder and try again.'
     })
     return null
   }

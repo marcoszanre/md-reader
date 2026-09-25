@@ -1,4 +1,4 @@
-# Dependências
+# Dependencies
 node_modules/
 
 # Build
@@ -6,17 +6,17 @@ out/
 dist/
 release/
 
-# Logs e caches
+# Logs and caches
 *.log
 npm-debug.log*
 .eslintcache
 .vite/
 
-# Ambiente e segredos
+# Environment and secrets
 .env
 .env.*
 
-# Editores e SO
+# Editors and OS
 .vscode/
 .idea/
 Thumbs.db

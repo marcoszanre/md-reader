@@ -2,6 +2,7 @@
   --zoom: 1;
   --base-font-size: 19px;
   --toc-width: 300px;
+  --minimap-width: 104px;
   --reading-width: 82ch;
   --font-ui: 'Segoe UI', system-ui, -apple-system, sans-serif;
   --font-body: 'Segoe UI', system-ui, -apple-system, 'Helvetica Neue', Arial, sans-serif;
@@ -12,7 +13,7 @@
   box-sizing: border-box;
 }
 
-/* Barras de rolagem finas e integradas ao tema, em qualquer direção. */
+/* Thin, theme-aware scrollbars in every direction. */
 * {
   scrollbar-width: thin;
   scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
@@ -65,9 +66,7 @@ body {
   min-height: 0;
 }
 
-/* ---------- Sumário ---------- */
-
-/* ---------- Barra de título ---------- */
+/* ---------- Title bar ---------- */
 
 .titlebar {
   height: 44px;
@@ -108,7 +107,7 @@ body {
   min-width: 0;
 }
 
-/* ---------- Sumário ---------- */
+/* ---------- Table of contents ---------- */
 
 .toc {
   width: var(--toc-width);
@@ -146,7 +145,7 @@ body.toc-hidden .toc-resizer {
   color: var(--fg-muted);
 }
 
-/* ---------- Seções da barra lateral ---------- */
+/* ---------- Sidebar sections ---------- */
 
 .side-section {
   display: flex;
@@ -201,7 +200,7 @@ body.toc-hidden .toc-resizer {
   background: var(--accent-soft);
 }
 
-/* ---------- Explorador de arquivos ---------- */
+/* ---------- File explorer ---------- */
 
 .files-path {
   padding: 0 14px 8px;
@@ -222,16 +221,38 @@ body.toc-hidden .toc-resizer {
 }
 
 .file-item {
-  display: block;
+  /* Without `flex: none` items shrink when the list overflows and the text
+     becomes squashed and unreadable. */
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
   width: 100%;
+  min-height: 32px;
   text-align: left;
   border: none;
   background: transparent;
   color: var(--fg-muted);
   font-size: 14px;
+  line-height: 1.4;
   padding: 6px 10px;
   border-radius: 6px;
   cursor: pointer;
+}
+
+.file-item .file-icon {
+  flex: 0 0 auto;
+  font-size: 13px;
+  line-height: 1;
+}
+
+.files-list .toc-empty {
+  flex: 0 0 auto;
+}
+
+.file-item .file-name {
+  flex: 1 1 auto;
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -250,6 +271,73 @@ body.toc-hidden .toc-resizer {
 
 .file-item.is-dir {
   color: var(--fg);
+}
+
+.file-item.is-image {
+  color: var(--fg-muted);
+}
+
+.file-item.is-text {
+  color: var(--fg-muted);
+}
+
+/* Files the app cannot open: visible for orientation, but clearly inactive. */
+.file-item:disabled {
+  opacity: 0.4;
+  cursor: default;
+  font-style: italic;
+}
+
+.file-item:disabled:hover {
+  background: transparent;
+  color: var(--fg-muted);
+}
+
+/* ---------- Image viewer ---------- */
+
+/* The image uses the full height of the reader so it is centered vertically
+   and horizontally, as in a dedicated image viewer. */
+.image-view {
+  margin: 0;
+  min-height: calc(100vh - 190px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+}
+
+.image-view img {
+  max-width: 100%;
+  max-height: calc(100vh - 250px);
+  object-fit: contain;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: repeating-conic-gradient(var(--bg-soft) 0% 25%, var(--bg) 0% 50%) 50% / 24px 24px;
+}
+
+.image-view figcaption {
+  font-size: 13.5px;
+  color: var(--fg-muted);
+  text-align: center;
+}
+
+/* ---------- Text viewer (read-only) ---------- */
+
+.markdown-body .text-view {
+  margin: 0;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  max-height: none;
+}
+
+.text-view code.text-view-code {
+  display: block;
+  font-size: 13.5px;
+  line-height: 1.55;
+  tab-size: 2;
+  white-space: pre;
+  overflow-x: auto;
 }
 
 .toc-list {
@@ -299,7 +387,7 @@ body.toc-hidden .toc-resizer {
   color: var(--fg-muted);
 }
 
-/* ---------- Área principal ---------- */
+/* ---------- Main area ---------- */
 
 .main {
   flex: 1;
@@ -311,8 +399,204 @@ body.toc-hidden .toc-resizer {
 
 .scroller {
   flex: 1;
+  min-width: 0;
   overflow-y: auto;
   outline: none;
+}
+
+/* ---------- Minimap ---------- */
+
+.reader {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  position: relative;
+}
+
+/* Keep the empty state full-height when no document is shown. */
+.reader:has(> .scroller[hidden]) {
+  display: none;
+}
+
+/* Reserve room so the minimap never covers text; the scrollbar stays at the far right, as in VS Code. */
+body.minimap-on .scroller {
+  padding-right: calc(var(--minimap-width) + 14px);
+}
+
+.minimap {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  right: 10px;
+  width: var(--minimap-width);
+  user-select: none;
+  touch-action: none;
+  box-shadow: -1px 0 0 var(--minimap-edge);
+}
+
+.minimap-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/* The find bar sits to the left of the minimap instead of covering it. */
+body.minimap-on .search-bar {
+  right: calc(var(--minimap-width) + 24px);
+}
+
+@media (max-width: 1000px) {
+  .minimap {
+    display: none !important;
+  }
+
+  body.minimap-on .scroller {
+    padding-right: 0;
+  }
+
+  body.minimap-on .search-bar {
+    right: 20px;
+  }
+}
+
+.status-bar .icon-btn.active {
+  color: var(--accent);
+}
+
+/* ---------- Inline editing ---------- */
+
+/* A thin accent line is the only chrome edit mode adds to the reading view. */
+body.editing .scroller {
+  box-shadow: inset 0 3px 0 var(--accent);
+}
+
+/* Every top-level block is clickable; hovering reveals its boundaries without shifting the layout. */
+body.editing .markdown-body [data-mdr-block] {
+  cursor: text;
+  border-radius: 6px;
+  transition: background-color 120ms ease, box-shadow 120ms ease;
+}
+
+body.editing .markdown-body [data-mdr-block]:hover {
+  background-color: var(--edit-hover);
+  box-shadow: 0 0 0 10px var(--edit-hover);
+}
+
+.block-editor {
+  margin: 0 0 1em;
+  border-radius: 6px;
+  background-color: var(--edit-active);
+  box-shadow: 0 0 0 10px var(--edit-active);
+  outline: 1px solid var(--edit-ring);
+  outline-offset: 10px;
+}
+
+/* Match the spacing of the rendered heading so the page does not jump when it opens. */
+.block-editor.is-h1 {
+  margin: 0.4em 0 0.6em;
+}
+
+.block-editor.is-h2 {
+  margin: 1.9em 0 0.6em;
+}
+
+.block-editor.is-h3,
+.block-editor.is-h4,
+.block-editor.is-h5,
+.block-editor.is-h6 {
+  margin: 1.6em 0 0.5em;
+}
+
+.block-input {
+  display: block;
+  width: 100%;
+  min-height: 1.7em;
+  padding: 0;
+  border: 0;
+  outline: none;
+  resize: none;
+  overflow: hidden;
+  background: transparent;
+  color: var(--fg);
+  caret-color: var(--accent);
+  font: inherit;
+  line-height: 1.7;
+  tab-size: 2;
+}
+
+.block-input::placeholder {
+  color: var(--fg-muted);
+}
+
+/* The source keeps the visual weight of what it will become. */
+.block-editor.is-heading .block-input {
+  font-weight: 650;
+  line-height: 1.3;
+}
+
+.block-editor.is-h1 .block-input {
+  font-size: 1.9em;
+}
+
+.block-editor.is-h2 .block-input {
+  font-size: 1.45em;
+}
+
+.block-editor.is-h3 .block-input {
+  font-size: 1.2em;
+}
+
+.block-editor.is-h4 .block-input {
+  font-size: 1.05em;
+}
+
+.block-editor.is-code .block-input {
+  font-family: var(--font-mono);
+  font-size: 0.85em;
+  line-height: 1.6;
+}
+
+.block-add {
+  display: block;
+  width: 100%;
+  margin: 1.6em 0 0;
+  padding: 14px 18px;
+  border: 1px dashed var(--border-strong);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--fg-muted);
+  font: inherit;
+  font-size: 0.9em;
+  text-align: left;
+  cursor: text;
+  transition: color 120ms ease, border-color 120ms ease;
+}
+
+.block-add:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.status-edit {
+  flex-shrink: 0;
+  white-space: nowrap;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--accent);
+}
+
+.status-edit.dirty {
+  color: var(--notice-fg);
+}
+
+.titlebar-name.dirty::after {
+  content: ' ●';
+  color: var(--notice-fg);
+}
+
+.status-bar .text-btn.copied {
+  color: var(--accent);
+  border-color: var(--accent);
 }
 
 .markdown-body {
@@ -325,16 +609,16 @@ body.toc-hidden .toc-resizer {
   overflow-wrap: break-word;
 }
 
-/* Modo "largura total": mais largo, mas com margem confortável em telas grandes. */
+/* "Full width" mode: wider, while keeping comfortable margins on large screens. */
 body[data-width='full'] .markdown-body {
   max-width: min(1500px, 92%);
   padding-left: clamp(32px, 5vw, 96px);
   padding-right: clamp(32px, 5vw, 96px);
 }
 
-/* ---------- Tipografia do documento ---------- */
+/* ---------- Document typography ---------- */
 
-/* Documentos longos: só renderiza o que está perto da viewport. */
+/* Long documents: only render what is close to the viewport. */
 .markdown-body.virtualized > h1,
 .markdown-body.virtualized > h2,
 .markdown-body.virtualized > h3,
@@ -497,7 +781,7 @@ body[data-width='full'] .markdown-body {
   background: var(--bg-soft);
 }
 
-/* ---------- Código ---------- */
+/* ---------- Code ---------- */
 
 .markdown-body code {
   font-family: var(--font-mono);
@@ -604,7 +888,7 @@ body[data-width='full'] .markdown-body {
   text-align: left;
 }
 
-/* ---------- Busca ---------- */
+/* ---------- Search ---------- */
 
 .search-bar {
   position: absolute;
@@ -666,7 +950,7 @@ body[data-width='full'] .markdown-body {
   color: var(--search-active-fg);
 }
 
-/* ---------- Aviso / erro ---------- */
+/* ---------- Notices / errors ---------- */
 
 .notice {
   display: flex;
@@ -717,7 +1001,7 @@ body[data-width='full'] .markdown-body {
   color: var(--fg-muted);
 }
 
-/* ---------- Estado vazio ---------- */
+/* ---------- Empty state ---------- */
 
 .empty-state {
   flex: 1;
@@ -789,7 +1073,7 @@ body[data-width='full'] .markdown-body {
   white-space: nowrap;
 }
 
-/* ---------- Barra de status ---------- */
+/* ---------- Status bar ---------- */
 
 .status-bar {
   display: flex;
@@ -807,9 +1091,12 @@ body[data-width='full'] .markdown-body {
   display: flex;
   align-items: center;
   gap: 6px;
+  flex-shrink: 0;
 }
 
 .status-file {
+  flex: 0 1 auto;
+  min-width: 48px;
   max-width: 34%;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -820,8 +1107,24 @@ body[data-width='full'] .markdown-body {
 }
 
 .status-stats {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
   white-space: nowrap;
   font-size: 14px;
+}
+
+/* Narrower windows: drop secondary information before any command is squeezed. */
+
+.status-bar .copy-path-btn {
+  margin-left: -12px;
+  font-size: 15px;
+}
+
+.status-bar .copy-path-btn.copied {
+  color: var(--accent);
+  border-color: var(--accent);
 }
 
 .status-right {
@@ -829,6 +1132,7 @@ body[data-width='full'] .markdown-body {
   display: flex;
   align-items: center;
   gap: 8px;
+  flex-shrink: 0;
 }
 
 .zoom-group {
@@ -853,6 +1157,8 @@ body[data-width='full'] .markdown-body {
   font-size: 16px;
   line-height: 1;
   border-radius: 8px;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .status-bar .icon-btn {
@@ -884,7 +1190,30 @@ body[data-width='full'] .markdown-body {
   cursor: default;
 }
 
-/* ---------- Painel Copilot ---------- */
+/* ---------- Status bar: narrow windows ---------- */
+
+/* Drop secondary information before any command is squeezed. */
+@media (max-width: 1500px) {
+  body.editing .status-stats {
+    display: none;
+  }
+}
+
+@media (max-width: 1280px) {
+  .status-bar {
+    gap: 12px;
+  }
+
+  .status-bar .text-btn {
+    padding: 0 12px;
+  }
+
+  .status-stats {
+    display: none;
+  }
+}
+
+/* ---------- Copilot panel ---------- */
 
 .status-bar .text-btn.accent.active {
   background: var(--accent-soft);

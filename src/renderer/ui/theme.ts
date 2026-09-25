@@ -25,7 +25,7 @@ export class ThemeController {
     return this.theme === 'dark' || (this.theme === 'system' && this.media.matches)
   }
 
-  /** Ciclo claro → escuro → sistema. */
+  /** Cycles light → dark → system. */
   toggle(): Theme {
     this.set(this.theme === 'light' ? 'dark' : this.theme === 'dark' ? 'system' : 'light')
     return this.theme

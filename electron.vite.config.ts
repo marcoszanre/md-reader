@@ -30,7 +30,7 @@ const DEV_CSP = [
   "object-src 'none'"
 ].join('; ')
 
-/** Injeta a CSP no index.html: estrita no build, com HMR liberado no dev. */
+/** Injects the CSP into index.html: strict for builds, with HMR allowed in dev. */
 function cspPlugin(): Plugin {
   let isDev = false
   return {

@@ -7,7 +7,7 @@ interface HighlightConstructor {
   new (...ranges: Range[]): unknown
 }
 
-// A CSS Custom Highlight API evita mexer no DOM do documento durante a busca.
+// The CSS Custom Highlight API avoids mutating the document DOM during search.
 const highlightApi = (() => {
   const ctor = (globalThis as { Highlight?: HighlightConstructor }).Highlight
   const registry = (CSS as unknown as { highlights?: HighlightRegistryLike }).highlights
@@ -24,7 +24,9 @@ export class SearchController {
     private readonly scroller: HTMLElement,
     private readonly bar: HTMLElement,
     private readonly input: HTMLInputElement,
-    private readonly counter: HTMLElement
+    private readonly counter: HTMLElement,
+    /** Notified whenever the set of matches or the active match changes (used by the minimap). */
+    private readonly onResults?: (matches: Range[], activeIndex: number) => void
   ) {}
 
   open(): void {
@@ -39,14 +41,15 @@ export class SearchController {
     this.clearHighlights()
     this.matches = []
     this.index = -1
-    this.counter.textContent = '0 de 0'
+    this.counter.textContent = '0 of 0'
+    this.onResults?.([], -1)
   }
 
   get isOpen(): boolean {
     return !this.bar.hidden
   }
 
-  /** Reexecuta a busca atual — usado após o live reload. */
+  /** Runs the current search again after live reload. */
   refresh(): void {
     if (this.isOpen && this.query) this.search(this.query, false)
   }
@@ -113,8 +116,9 @@ export class SearchController {
   }
 
   private updateCounter(): void {
+    this.onResults?.(this.matches, this.index)
     const total = this.matches.length
-    this.counter.textContent = total === 0 ? '0 de 0' : `${this.index + 1} de ${total}`
+    this.counter.textContent = total === 0 ? '0 of 0' : `${this.index + 1} of ${total}`
     this.counter.classList.toggle('no-results', total === 0 && this.query.trim().length > 0)
   }
 

@@ -18,7 +18,7 @@ export class TocController {
     if (headings.length === 0) {
       const empty = document.createElement('p')
       empty.className = 'toc-empty'
-      empty.textContent = 'Sem títulos neste documento.'
+      empty.textContent = 'No headings in this document.'
       this.list.appendChild(empty)
       return
     }

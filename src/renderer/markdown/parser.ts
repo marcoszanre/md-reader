@@ -15,6 +15,10 @@ export interface RenderResult {
   html: string
   headings: Heading[]
   frontMatter: string | null
+  /** Number of source lines taken by the front matter (0 when there is none). */
+  frontMatterLines: number
+  /** Per-render token that authenticates `data-mdr-block` attributes; empty when `sourceMap` is off. */
+  blockNonce: string
   hasMermaid: boolean
   hasMath: boolean
   hasRemoteImages: boolean
@@ -22,6 +26,66 @@ export interface RenderResult {
 
 export interface RenderOptions {
   docDir: string
+  /**
+   * Tags every top-level block with `data-mdr-block="<nonce>:<startLine>:<endLine>"`
+   * (0-based, end exclusive, relative to the full source) so it can be edited in place.
+   */
+  sourceMap?: boolean
+}
+
+/** Attribute that maps a rendered block back to its source lines. */
+export const BLOCK_ATTR = 'data-mdr-block'
+
+/** Self-contained block tokens whose renderers ignore token attributes; they get a balanced wrapper instead. */
+const WRAPPED_BLOCK_RULES = ['math_block', 'math_block_eqno']
+
+/** Class of the empty marker placed before raw HTML blocks (see `installSourceMap`). */
+export const BLOCK_MARKER_CLASS = 'md-block-marker'
+
+interface SourceMapEnv {
+  sourceMap?: { nonce: string; offset: number }
+}
+
+function newNonce(): string {
+  const bytes = new Uint8Array(8)
+  globalThis.crypto.getRandomValues(bytes)
+  return Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('')
+}
+
+function installSourceMap(md: MarkdownIt): void {
+  md.core.ruler.push('mdr_source_map', (state) => {
+    const map = (state.env as SourceMapEnv | undefined)?.sourceMap
+    if (!map) return
+    const lines = state.src.split('\n')
+    for (const token of state.tokens) {
+      if (token.level !== 0 || !token.block || !token.map || token.nesting < 0) continue
+      const start = token.map[0]
+      let end = token.map[1]
+      // Lists and some blocks include trailing blank lines; keep only the block's own lines.
+      while (end > start + 1 && (lines[end - 1] ?? '').trim() === '') end -= 1
+      token.attrSet(BLOCK_ATTR, `${map.nonce}:${start + map.offset}:${end + map.offset}`)
+    }
+  })
+
+  for (const name of WRAPPED_BLOCK_RULES) {
+    const original = md.renderer.rules[name]
+    if (!original) continue
+    md.renderer.rules[name] = (tokens, idx, options, env, self) => {
+      const html = original(tokens, idx, options, env, self)
+      const attr = tokens[idx]!.attrGet(BLOCK_ATTR)
+      return attr ? `<div class="md-block" ${BLOCK_ATTR}="${escapeAttr(attr)}">${html}</div>` : html
+    }
+  }
+
+  // Raw HTML is often opened in one block and closed in a later one (`<details>`,
+  // `<div align="center">`), so wrapping it would close those elements early.
+  // An empty marker in front of it carries the source range instead.
+  const htmlBlock = md.renderer.rules.html_block
+  md.renderer.rules.html_block = (tokens, idx, options, env, self) => {
+    const html = htmlBlock ? htmlBlock(tokens, idx, options, env, self) : tokens[idx]!.content
+    const attr = tokens[idx]!.attrGet(BLOCK_ATTR)
+    return attr ? `<span class="${BLOCK_MARKER_CLASS}" hidden ${BLOCK_ATTR}="${escapeAttr(attr)}"></span>${html}` : html
+  }
 }
 
 const FRONT_MATTER = /^\uFEFF?(?:---|\+\+\+)\r?\n([\s\S]*?)\r?\n(?:---|\+\+\+)(?:\r?\n|$)/
@@ -33,8 +97,8 @@ export function extractFrontMatter(source: string): { frontMatter: string | null
 }
 
 export function hasMathDelimiters(source: string): boolean {
-  // indexOf em vez de regex: evita backtracking quadrático em arquivos grandes
-  // com `$$` sem fechamento.
+  // Use indexOf instead of regex to avoid quadratic backtracking in large files
+  // with unclosed `$$`.
   const block = source.indexOf('$$')
   if (block !== -1 && source.indexOf('$$', block + 2) !== -1) return true
   return /(^|[^\\$])\$[^\s$][^$\n]{0,200}\$/.test(source)
@@ -52,7 +116,7 @@ export function slugify(title: string): string {
     .replace(/[^\w\s-]/g, '')
     .trim()
     .replace(/\s+/g, '-')
-  return base || 'secao'
+  return base || 'section'
 }
 
 function escapeAttr(value: string): string {
@@ -68,7 +132,7 @@ let mathPromise: Promise<MarkdownIt> | null = null
 
 function createBase(): MarkdownIt {
   const md: MarkdownIt = new MarkdownIt({
-    html: true, // seguro apenas porque a saída passa obrigatoriamente pelo DOMPurify
+    html: true, // Safe only because output always passes through DOMPurify.
     linkify: true,
     breaks: false,
     typographer: false,
@@ -95,14 +159,18 @@ function createBase(): MarkdownIt {
   md.renderer.rules.fence = (tokens, idx, options, env, self) => {
     const token = tokens[idx]!
     const info = token.info.trim().split(/\s+/)[0]?.toLowerCase() ?? ''
+    const blockAttr = token.attrGet(BLOCK_ATTR)
+    const mapAttr = blockAttr ? ` ${BLOCK_ATTR}="${escapeAttr(blockAttr)}"` : ''
     if (info === 'mermaid') {
-      return `<div class="mermaid-block" data-mermaid="${escapeAttr(token.content)}"><div class="mermaid-render">Renderizando diagrama…</div></div>`
+      return `<div class="mermaid-block"${mapAttr} data-mermaid="${escapeAttr(token.content)}"><div class="mermaid-render">Rendering diagram…</div></div>`
     }
+    // The default fence renderer would copy the source-map attribute onto `<pre>`; the wrapper carries it instead.
+    if (blockAttr) token.attrs = token.attrs?.filter(([name]) => name !== BLOCK_ATTR) ?? null
     const rendered = defaultFence
       ? defaultFence(tokens, idx, options, env, self)
       : `<pre class="code-pre"><code>${md.utils.escapeHtml(token.content)}</code></pre>`
     const label = info ? `<span class="code-lang">${md.utils.escapeHtml(info)}</span>` : ''
-    return `<div class="code-block">${label}<span class="copy-btn" role="button" tabindex="0" title="Copiar código">Copiar</span>${rendered}</div>`
+    return `<div class="code-block"${mapAttr}>${label}<span class="copy-btn" role="button" tabindex="0" title="Copy code">Copy</span>${rendered}</div>`
   }
 
   md.renderer.rules.image = (tokens, idx, _options, env: unknown) => {
@@ -125,17 +193,21 @@ function createBase(): MarkdownIt {
 
 async function getParser(withMath: boolean): Promise<MarkdownIt> {
   if (!withMath) {
-    basePromise ??= Promise.resolve(createBase())
+    basePromise ??= Promise.resolve(createBase()).then((md) => {
+      installSourceMap(md)
+      return md
+    })
     return basePromise
   }
   mathPromise ??= (async () => {
     const md = createBase()
-    // KaTeX só é carregado quando o documento tem matemática (Seção 9 da spec).
+    // Load KaTeX only when the document has math (spec Section 9).
     const [{ default: katexPlugin }] = await Promise.all([
       import('@vscode/markdown-it-katex'),
       import('katex/dist/katex.min.css')
     ])
     md.use(katexPlugin, { throwOnError: false, errorColor: '#e5534b' })
+    installSourceMap(md)
     return md
   })()
   return mathPromise
@@ -146,8 +218,17 @@ export async function renderMarkdown(source: string, options: RenderOptions): Pr
   const withMath = hasMathDelimiters(body)
   const md = await getParser(withMath)
 
+  const prefix = source.slice(0, source.length - body.length)
+  const offset = prefix.split('\n').length - 1
+  const frontMatterLines = frontMatter === null ? 0 : prefix.endsWith('\n') ? offset : offset + 1
+  const blockNonce = options.sourceMap ? newNonce() : ''
+
   const headings: Heading[] = []
-  const env = { docDir: options.docDir, headings }
+  const env: { docDir: string; headings: Heading[] } & SourceMapEnv = {
+    docDir: options.docDir,
+    headings,
+    ...(options.sourceMap ? { sourceMap: { nonce: blockNonce, offset } } : {})
+  }
 
   const collector = md.renderer.rules.heading_open
   md.renderer.rules.heading_open = (tokens, idx, opts, envArg, self) => {
@@ -167,6 +248,8 @@ export async function renderMarkdown(source: string, options: RenderOptions): Pr
     html: sanitizeHtml(rawHtml),
     headings,
     frontMatter,
+    frontMatterLines,
+    blockNonce,
     hasMermaid: hasMermaidBlocks(body),
     hasMath: withMath,
     hasRemoteImages: /<img class="remote-image"/.test(rawHtml)

@@ -17,7 +17,6 @@ asarUnpack:
   - node_modules/@github/copilot/**
 
 electronLanguages:
-  - pt-BR
   - en-US
 
 win:
@@ -28,7 +27,7 @@ win:
     - target: portable
       arch: [x64]
 
-# Instalação por usuário: não exige privilégio de administrador.
+# Per-user installation: does not require administrator privileges.
 nsis:
   oneClick: false
   perMachine: false
@@ -39,8 +38,8 @@ nsis:
   shortcutName: MD Reader
   deleteAppDataOnUninstall: false
   installerLanguages:
-    - pt_BR
-  language: '1046'
+    - en_US
+  language: '1033'
   artifactName: MDReader-${version}-setup.${ext}
 
 portable:

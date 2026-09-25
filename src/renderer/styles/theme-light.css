@@ -24,6 +24,10 @@ body[data-theme='light'] {
   --scrollbar-thumb: #c9d1d9;
   --scrollbar-thumb-hover: #a8b1bb;
   --scrollbar-track: transparent;
+  --minimap-edge: rgba(31, 35, 40, 0.07);
+  --edit-hover: rgba(91, 75, 196, 0.05);
+  --edit-active: rgba(91, 75, 196, 0.06);
+  --edit-ring: rgba(91, 75, 196, 0.35);
 }
 
 body[data-theme='light'] .hljs-comment,

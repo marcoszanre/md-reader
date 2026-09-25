@@ -1,5 +1,5 @@
-# Registra o MD Reader no menu "Abrir com" do Windows Explorer (somente HKCU).
-# Uso:  powershell -ExecutionPolicy Bypass -File scripts\register-open-with.ps1 [-ExePath "C:\...\MD Reader.exe"] [-Unregister]
+# Registers MD Reader in the Windows Explorer "Open with" menu (HKCU only).
+# Usage: powershell -ExecutionPolicy Bypass -File scripts\register-open-with.ps1 [-ExePath "C:\path\to\MD Reader.exe"] [-Unregister]
 
 param(
     [string]$ExePath = "",
@@ -22,7 +22,7 @@ if ($Unregister) {
         $owp = "HKCU:\Software\Classes\$ext\OpenWithProgids"
         if (Test-Path $owp) { Remove-ItemProperty -Path $owp -Name $progId -ErrorAction SilentlyContinue }
     }
-    Write-Host "MD Reader removido do 'Abrir com'."
+    Write-Host "MD Reader removed from 'Open with'."
     return
 }
 
@@ -30,18 +30,18 @@ if (-not $ExePath) {
     $ExePath = Join-Path $PSScriptRoot '..\release\win-unpacked\MD Reader.exe'
 }
 $ExePath = (Resolve-Path $ExePath).Path
-if (-not (Test-Path $ExePath)) { throw "Executável não encontrado: $ExePath" }
+if (-not (Test-Path $ExePath)) { throw "Executable not found: $ExePath" }
 
 $command = '"' + $ExePath + '" "%1"'
 
-# ProgId: define ícone, nome amigável e comando de abertura.
+# ProgId: defines the icon, friendly name, and open command.
 New-Item -Path "HKCU:\Software\Classes\$progId\shell\open\command" -Force | Out-Null
-Set-ItemProperty -Path "HKCU:\Software\Classes\$progId" -Name '(default)' -Value 'Documento Markdown'
+Set-ItemProperty -Path "HKCU:\Software\Classes\$progId" -Name '(default)' -Value 'Markdown document'
 New-Item -Path "HKCU:\Software\Classes\$progId\DefaultIcon" -Force | Out-Null
 Set-ItemProperty -Path "HKCU:\Software\Classes\$progId\DefaultIcon" -Name '(default)' -Value "$ExePath,0"
 Set-ItemProperty -Path "HKCU:\Software\Classes\$progId\shell\open\command" -Name '(default)' -Value $command
 
-# Applications\MDReader.exe: é o que faz o app aparecer na lista "Abrir com".
+# Applications\MDReader.exe makes the app appear in the "Open with" list.
 $appKey = "HKCU:\Software\Classes\Applications\$appKeyName"
 New-Item -Path "$appKey\shell\open\command" -Force | Out-Null
 Set-ItemProperty -Path $appKey -Name 'FriendlyAppName' -Value 'MD Reader'
@@ -55,11 +55,11 @@ foreach ($ext in $extensions) {
     Set-ItemProperty -Path "HKCU:\Software\Classes\$ext\OpenWithProgids" -Name $progId -Value ([byte[]]@()) -Type Binary
 }
 
-# Avisa o Explorer para recarregar as associações.
+# Notifies Explorer to reload file associations.
 Add-Type -Namespace Win32 -Name Shell -MemberDefinition @"
 [DllImport("shell32.dll")] public static extern void SHChangeNotify(int eventId, uint flags, IntPtr item1, IntPtr item2);
 "@
 [Win32.Shell]::SHChangeNotify(0x08000000, 0, [IntPtr]::Zero, [IntPtr]::Zero)
 
-Write-Host "MD Reader registrado no 'Abrir com' para: $($extensions -join ', ')"
-Write-Host "Executável: $ExePath"
+Write-Host "MD Reader registered in 'Open with' for: $($extensions -join ', ')"
+Write-Host "Executable: $ExePath"

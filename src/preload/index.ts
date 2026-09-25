@@ -6,7 +6,10 @@ import type {
   ErrorPayload,
   CopilotAskInput,
   CopilotEvent,
-  DirListing
+  DirListing,
+  SaveRequest,
+  SaveResult,
+  EditorPrompt
 } from '../shared/api'
 
 const api: MdReaderAPI = {
@@ -19,6 +22,13 @@ const api: MdReaderAPI = {
   newWindow: () => ipcRenderer.invoke('window:new'),
   closeWindow: () => ipcRenderer.invoke('window:close'),
   toggleFullscreen: () => ipcRenderer.invoke('window:toggleFullscreen'),
+  copyCurrentPath: () => ipcRenderer.invoke('clipboard:copyPath'),
+  saveFile: (request: SaveRequest): Promise<SaveResult> => ipcRenderer.invoke('file:save', request),
+  setEditorDirty: (dirty: boolean) => ipcRenderer.invoke('editor:setDirty', dirty),
+  confirmEditor: (prompt: EditorPrompt): Promise<boolean> => ipcRenderer.invoke('editor:confirm', prompt),
+  onSaveAndClose: (cb: () => void) => {
+    ipcRenderer.on('editor:saveAndClose', () => cb())
+  },
   getSettings: () => ipcRenderer.invoke('settings:get'),
   setSettings: (patch: Partial<Settings>) => ipcRenderer.invoke('settings:set', patch),
   listDir: (dir: string): Promise<DirListing | null> => ipcRenderer.invoke('fs:list', dir),

@@ -1,28 +1,53 @@
 import { BrowserWindow, shell, dialog, app, nativeTheme, screen } from 'electron'
-import { join, dirname, resolve, sep } from 'node:path'
-import { FileWatcher, readMarkdownFile, FileReadError } from './file-handler'
+import { join, dirname, basename, resolve } from 'node:path'
+import {
+  FileWatcher,
+  readMarkdownFile,
+  readOpenedFile,
+  isMarkdownPath,
+  FileReadError,
+  FileWriteError,
+  writeMarkdownFile
+} from './file-handler'
+import { normalizeDir, isWithin, canBrowse, nextBrowseRoot, assetRoot } from './browse-scope'
 import { getSettings, setSettings, addRecentFile } from './settings'
-import { allowAssetRoot, setAssetRoots } from './protocol'
+import { setAssetRoots } from './protocol'
 import { disposeWindow } from './copilot'
 import type { Settings } from '../shared/types'
+import type { SaveRequest, SaveResult } from '../shared/api'
+import { MARKDOWN_EXTENSIONS, IMAGE_EXTENSIONS } from '../shared/types'
 
 interface WindowState {
   watcher: FileWatcher
   currentPath: string | null
+  /** Highest folder the user has browsed to; defines the explorer scope. */
+  browseRoot: string | null
+  /** The renderer has unsaved edits for `currentPath`. */
+  dirty: boolean
 }
 
 const states = new Map<number, WindowState>()
 
-/** A allowlist de imagens contém apenas as pastas dos documentos abertos agora. */
+/**
+ * Image root for a window. It matches the explorer root (the highest folder the
+ * user reached), with at least the document parent folder because references
+ * such as `../evidence/photo.png` are common in documentation repositories.
+ */
+function assetRootFor(state: WindowState): string | null {
+  if (!state.currentPath) return null
+  const docDir = dirname(state.currentPath)
+  return assetRoot(docDir, dirname(docDir), state.browseRoot)
+}
+
+/** The image allowlist contains only folders related to open documents. */
 function syncAssetRoots(): void {
   const dirs = [...states.values()]
-    .map((state) => state.currentPath)
-    .filter((path): path is string => !!path)
-    .map((path) => dirname(path))
+    .map((state) => assetRootFor(state))
+    .filter((dir): dir is string => !!dir)
   setAssetRoots(dirs)
 }
 
-/** Cores dos controles nativos da janela, alinhadas ao tema do app. */
+/** Native window control colors aligned with the app theme. */
 export function titleBarOverlayFor(theme: Settings['theme']): Electron.TitleBarOverlay {
   const dark = theme === 'dark' || (theme === 'system' && nativeTheme.shouldUseDarkColors)
   return dark
@@ -35,15 +60,15 @@ export function applyTitleBarTheme(theme: Settings['theme']): void {
     try {
       win.setTitleBarOverlay(titleBarOverlayFor(theme))
     } catch {
-      // Plataforma sem overlay: ignorar.
+      // Platform without overlay support: ignore.
     }
   }
 }
 
 /**
- * Mantém a janela no monitor onde ela estava. Se aquele monitor não existir mais
- * (ou a janela ficaria fora da área visível), reposiciona na área de trabalho
- * do display mais próximo.
+ * Keeps the window on the display where it was. If that display no longer exists
+ * (or the window would be outside the visible area), reposition it in the work
+ * area of the nearest display.
  */
 function restoreBounds(saved: Settings['windowBounds']): Electron.Rectangle | null {
   if (saved.x === null || saved.y === null) return null
@@ -67,7 +92,7 @@ function restoreBounds(saved: Settings['windowBounds']): Electron.Rectangle | nu
   }
 }
 
-/** Salva posição/tamanho "restaurados" e o estado maximizado da janela. */
+/** Saves the restored position/size and the maximized window state. */
 function persistWindowState(win: BrowserWindow): void {
   if (win.isDestroyed() || win.isMinimized()) return
   const maximized = win.isMaximized() || win.isFullScreen()
@@ -98,7 +123,7 @@ export function createWindow(filePath?: string | null): BrowserWindow {
     minHeight: 360,
     show: false,
     autoHideMenuBar: true,
-    // Barra de título própria: o nome do arquivo precisa ser grande e legível.
+    // Custom title bar: the file name needs to be large and readable.
     titleBarStyle: 'hidden',
     titleBarOverlay: titleBarOverlayFor(settings.theme),
     backgroundColor: settings.theme === 'light' ? '#ffffff' : '#0d1117',
@@ -118,18 +143,18 @@ export function createWindow(filePath?: string | null): BrowserWindow {
 
   win.removeMenu()
 
-  // Maximiza antes de exibir: a janela já aparece no monitor certo, sem piscar.
+  // Maximize before showing so the window appears on the correct monitor without flicker.
   if (settings.windowMaximized) win.maximize()
 
   const watcher = new FileWatcher((changed) => {
     void reloadFile(win, changed, true)
   })
-  states.set(win.id, { watcher, currentPath: null })
+  states.set(win.id, { watcher, currentPath: null, browseRoot: null, dirty: false })
 
   win.once('ready-to-show', () => win.show())
 
-  // Salva o estado também durante o uso: se o app for encerrado pelo SO,
-  // a última posição/monitor continua preservada.
+  // Also save state during use so the latest position/display remains preserved
+  // if the OS terminates the app.
   let saveTimer: NodeJS.Timeout | null = null
   const scheduleSave = (): void => {
     if (saveTimer) clearTimeout(saveTimer)
@@ -140,7 +165,27 @@ export function createWindow(filePath?: string | null): BrowserWindow {
   win.on('maximize', scheduleSave)
   win.on('unmaximize', scheduleSave)
 
-  win.on('close', () => {
+  win.on('close', (event) => {
+    const state = states.get(win.id)
+    if (state?.dirty && !win.webContents.isDestroyed()) {
+      const choice = dialog.showMessageBoxSync(win, {
+        type: 'warning',
+        title: 'Unsaved changes',
+        message: `Do you want to save the changes to ${documentName(state)}?`,
+        detail: 'Your changes will be lost if you do not save them.',
+        buttons: ['Save', "Don't save", 'Cancel'],
+        defaultId: 0,
+        cancelId: 2,
+        noLink: true
+      })
+      if (choice !== 1) {
+        event.preventDefault()
+        // The renderer owns the edited text: it saves and then closes the window itself.
+        if (choice === 0) win.webContents.send('editor:saveAndClose')
+        return
+      }
+      state.dirty = false
+    }
     if (saveTimer) clearTimeout(saveTimer)
     persistWindowState(win)
   })
@@ -184,38 +229,130 @@ export async function openExternalSafely(url: string): Promise<void> {
       await shell.openExternal(url)
     }
   } catch {
-    // URL inválida: ignorar silenciosamente.
+    // Invalid URL: ignore silently.
+  }
+}
+
+function documentName(state: WindowState): string {
+  return state.currentPath ? `"${basename(state.currentPath)}"` : 'this document'
+}
+
+/** Asks before discarding unsaved edits. Resolves to `true` when it is safe to replace the document. */
+export async function confirmDiscard(win: BrowserWindow): Promise<boolean> {
+  const state = states.get(win.id)
+  if (!state?.dirty) return true
+  const { response } = await dialog.showMessageBox(win, {
+    type: 'warning',
+    title: 'Unsaved changes',
+    message: `Discard the unsaved changes to ${documentName(state)}?`,
+    detail: 'Your edits will be lost. This cannot be undone.',
+    buttons: ['Discard changes', 'Keep editing'],
+    defaultId: 1,
+    cancelId: 1,
+    noLink: true
+  })
+  if (response !== 0) return false
+  state.dirty = false
+  return true
+}
+
+/** Asks before overwriting a file that another program changed while it was being edited. */
+export async function confirmOverwrite(win: BrowserWindow): Promise<boolean> {
+  const state = states.get(win.id)
+  const { response } = await dialog.showMessageBox(win, {
+    type: 'warning',
+    title: 'File changed on disk',
+    message: `${state ? documentName(state) : 'This document'} was changed by another program.`,
+    detail: 'Saving now replaces the version on disk with your edits. Do you want to overwrite it?',
+    buttons: ['Overwrite', 'Cancel'],
+    defaultId: 1,
+    cancelId: 1,
+    noLink: true
+  })
+  return response === 0
+}
+
+export function setDirty(win: BrowserWindow, dirty: boolean): void {
+  const state = states.get(win.id)
+  if (state) state.dirty = dirty && !!state.currentPath && isMarkdownPath(state.currentPath)
+}
+
+/**
+ * Saves the window's current Markdown document. The path always comes from the
+ * main-process state; the renderer only states which document it believes it is
+ * editing, and a mismatch is rejected instead of writing somewhere unexpected.
+ */
+export async function saveCurrentDocument(win: BrowserWindow, request: SaveRequest): Promise<SaveResult> {
+  const state = states.get(win.id)
+  const current = state?.currentPath
+  if (!state || !current || !isMarkdownPath(current)) {
+    return { ok: false, reason: 'invalid', message: 'There is no Markdown document to save in this window.' }
+  }
+  if (resolve(request.path).toLowerCase() !== current.toLowerCase()) {
+    return {
+      ok: false,
+      reason: 'stale',
+      message: 'The open document changed before the save completed. Your edits were not written.'
+    }
+  }
+  try {
+    const { mtimeMs } = await writeMarkdownFile(current, request.content, {
+      expectedMtimeMs: request.expectedMtimeMs,
+      force: request.force
+    })
+    // Restart the watcher so the app's own save is not reported back as an external change.
+    state.watcher.watchFile(current)
+    addRecentFile(current)
+    return { ok: true, mtimeMs }
+  } catch (err) {
+    if (err instanceof FileWriteError) {
+      return { ok: false, reason: err.conflict ? 'conflict' : 'error', message: err.message }
+    }
+    return { ok: false, reason: 'error', message: `Unexpected error while saving:\n${current}` }
   }
 }
 
 export async function openFileInWindow(win: BrowserWindow, filePath: string): Promise<void> {
+  const state = states.get(win.id)
+  let payload: Awaited<ReturnType<typeof readOpenedFile>>
   try {
-    const payload = await readMarkdownFile(filePath)
-    const state = states.get(win.id)
-    if (state) {
-      state.currentPath = payload.path
-      state.watcher.watchFile(payload.path)
-    }
-    allowAssetRoot(dirname(payload.path))
-    addRecentFile(payload.path)
-    win.webContents.send('file:opened', { ...payload, dir: dirname(payload.path) })
+    payload = await readOpenedFile(filePath)
   } catch (err) {
-    const message = err instanceof FileReadError ? err.message : `Erro inesperado ao abrir:\n${filePath}`
+    const message = err instanceof FileReadError ? err.message : `Unexpected error while opening:\n${filePath}`
+    if (state?.dirty) {
+      // Keep the editor (and its unsaved edits) intact; report the failure natively instead.
+      await dialog.showMessageBox(win, { type: 'error', title: 'Unable to open the file', message, noLink: true })
+      return
+    }
     win.webContents.send('file:error', { path: filePath, message })
+    return
   }
+
+  if (!(await confirmDiscard(win))) return
+  if (state) {
+    state.currentPath = payload.path
+    state.watcher.watchFile(payload.path)
+    // Document outside the browsed tree: restart the explorer in its folder.
+    const docDir = normalizeDir(dirname(payload.path))
+    if (state.browseRoot && !isWithin(docDir, state.browseRoot)) state.browseRoot = null
+  }
+  syncAssetRoots()
+  addRecentFile(payload.path)
+  win.webContents.send('file:opened', { ...payload, dir: dirname(payload.path) })
 }
 
 async function reloadFile(win: BrowserWindow, filePath: string, external: boolean): Promise<void> {
   if (win.isDestroyed()) return
+  if (!external && !(await confirmDiscard(win))) return
   try {
-    const payload = await readMarkdownFile(filePath)
+    const payload = await readOpenedFile(filePath)
     win.webContents.send(external ? 'file:changed' : 'file:opened', {
       ...payload,
       dir: dirname(payload.path)
     })
   } catch (err) {
-    const message = err instanceof FileReadError ? err.message : `Erro ao recarregar:\n${filePath}`
-    win.webContents.send('file:error', { path: filePath, message })
+    const message = err instanceof FileReadError ? err.message : `Error while reloading:\n${filePath}`
+    win.webContents.send('file:error', { path: filePath, message, external })
   }
 }
 
@@ -225,22 +362,38 @@ export async function reloadCurrent(win: BrowserWindow): Promise<void> {
 }
 
 /**
- * Limita a navegação de pastas ao contexto do documento aberto: a própria pasta,
- * seus ancestrais e descendentes. Evita que o renderer varra o disco inteiro.
+ * Limits folder browsing to locations the user has reached by clicking: the
+ * document folder, its tree, and the tree of the highest folder they moved up to
+ * (the "browse root"). That enables sibling folders after moving up one level
+ * without allowing the renderer to jump to an arbitrary disk path.
  */
-export function isBrowsableDir(win: BrowserWindow, dir: string): boolean {
+function browseContext(win: BrowserWindow, dir: string): { target: string; docDir: string; root: string } | null {
   const current = currentPathOf(win)
-  if (!current) return false
-  const target = resolve(dir).toLowerCase()
-  if (target.startsWith('\\\\')) return false
-
-  const base = dirname(resolve(current)).toLowerCase()
-  const withSep = (p: string): string => (p.endsWith(sep) ? p : p + sep)
-  return target === base || target.startsWith(withSep(base)) || base.startsWith(withSep(target))
+  if (!current) return null
+  const docDir = normalizeDir(dirname(current))
+  return { target: normalizeDir(dir), docDir, root: states.get(win.id)?.browseRoot ?? docDir }
 }
 
-/** Trecho do documento aberto, lido no main para o contexto do Copilot. */
+export function isBrowsableDir(win: BrowserWindow, dir: string): boolean {
+  const ctx = browseContext(win, dir)
+  return !!ctx && canBrowse(ctx.target, ctx.docDir, ctx.root)
+}
+
+/** Moves the browse root up when the user opens a folder above it. */
+export function noteBrowsedDir(win: BrowserWindow, dir: string): void {
+  const ctx = browseContext(win, dir)
+  const state = states.get(win.id)
+  if (!ctx || !state) return
+  const next = nextBrowseRoot(ctx.target, ctx.root)
+  if (next === state.browseRoot) return
+  state.browseRoot = next
+  // Browsing upward also expands the reachable image scope for documents.
+  syncAssetRoots()
+}
+
+/** Excerpt from the open document, read in the main process for Copilot context. */
 export async function readDocumentExcerpt(filePath: string, max = 8000): Promise<string | null> {
+  if (!isMarkdownPath(filePath)) return null
   try {
     const { content } = await readMarkdownFile(filePath)
     return content.slice(0, max)
@@ -251,11 +404,13 @@ export async function readDocumentExcerpt(filePath: string, max = 8000): Promise
 
 export async function openFileDialog(win: BrowserWindow): Promise<void> {
   const result = await dialog.showOpenDialog(win, {
-    title: 'Abrir arquivo Markdown',
+    title: 'Open file',
     properties: ['openFile'],
     filters: [
-      { name: 'Markdown', extensions: ['md', 'markdown', 'mdown', 'mkd'] },
-      { name: 'Todos os arquivos', extensions: ['*'] }
+      { name: 'Markdown and images', extensions: [...MARKDOWN_EXTENSIONS, ...IMAGE_EXTENSIONS] },
+      { name: 'Markdown', extensions: [...MARKDOWN_EXTENSIONS] },
+      { name: 'Images', extensions: [...IMAGE_EXTENSIONS] },
+      { name: 'All files', extensions: ['*'] }
     ]
   })
   if (result.canceled || result.filePaths.length === 0) return

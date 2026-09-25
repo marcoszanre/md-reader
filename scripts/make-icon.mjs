@@ -1,4 +1,4 @@
-// Gera resources/icon.ico (PNG 256x256 embutido) sem dependências externas.
+// Generates resources/icon.ico with an embedded 256x256 PNG and no external dependencies.
 import { deflateSync } from 'node:zlib'
 import { writeFileSync, mkdirSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
@@ -104,4 +104,4 @@ entry.writeUInt32LE(22, 12)
 
 mkdirSync(dirname(out), { recursive: true })
 writeFileSync(out, Buffer.concat([header, entry, png]))
-console.log(`icon.ico gerado (${png.length} bytes de PNG)`)
+console.log(`Generated icon.ico (${png.length} bytes of PNG)`)

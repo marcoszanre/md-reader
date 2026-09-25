@@ -1,55 +1,59 @@
-# Política de segurança
+# Security policy
 
-## Modelo de ameaça
+## Threat model
 
-O MD Reader abre arquivos `.md` que podem vir de qualquer lugar — e-mail, download,
-repositório de terceiros. **Todo conteúdo de documento é tratado como não confiável**,
-incluindo HTML embutido, SVG, links, imagens e diagramas Mermaid.
+MD Reader opens `.md` files that may come from anywhere: email, downloads, or
+third-party repositories. **All document content is treated as untrusted**, including
+embedded HTML, SVG, links, images, and Mermaid diagrams.
 
-O que o app garante:
+What the app guarantees:
 
-| Superfície | Proteção |
+| Surface | Protection |
 |---|---|
-| HTML/SVG do documento | 100% do HTML gerado passa por **DOMPurify** antes de tocar o DOM. Sem exceção, sem flag de "permitir HTML bruto". |
-| Renderer | `nodeIntegration: false`, `contextIsolation: true`, `sandbox: true`, `webSecurity: true`, sem `webview`. |
-| CSP (produção) | `default-src 'none'`, `script-src 'self'`, sem `unsafe-eval`, sem origem remota. |
-| Imagens locais | Servidas pelo protocolo `mdasset://`, restrito às pastas dos documentos abertos, com `realpath` (bloqueia symlink/junção) e limpeza ao fechar a janela. |
-| Caminhos de rede | `//host/...` e `\\host\...` são removidos na sanitização e rejeitados no processo main — evita autenticação SMB/NTLM silenciosa. |
-| Abertura de arquivos | O main só abre caminhos locais com extensão Markdown; UNC é rejeitado. |
-| Navegação de pastas | Limitada à pasta do documento aberto, seus ancestrais e descendentes. |
-| Links externos | Somente `http:`, `https:` e `mailto:`, sempre no navegador padrão via `shell.openExternal`. |
-| IPC | Handlers validam tipo e conteúdo e só aceitam mensagens do frame principal da própria janela. |
-| Rede | Zero requisições para renderizar. Nenhuma fonte, CSS ou script de CDN. Imagens remotas podem ser bloqueadas. |
-| Tamanho | Arquivos acima de 20 MB são recusados com mensagem explicativa. |
+| Document HTML/SVG | 100% of generated HTML is sanitized with **DOMPurify** before it reaches the DOM. There are no exceptions and no "allow raw HTML" flag. |
+| Renderer | `nodeIntegration: false`, `contextIsolation: true`, `sandbox: true`, `webSecurity: true`, and no `webview`. |
+| CSP in production | `default-src 'none'`, `script-src 'self'`, no `unsafe-eval`, and no remote origin. |
+| Local images | Served through the `mdasset://` protocol, restricted to the folder above the document or to the higher navigation root when applicable, protected with `realpath` checks that block symlinks and junctions, and cleaned up when the window closes. |
+| Network paths | `//host/...` and `\\host\...` are removed during sanitization and rejected in the main process to prevent silent SMB/NTLM authentication. |
+| Opening files | The main process opens local Markdown, image, and text files only; binary files and UNC paths are rejected. Text-file content is never interpreted as HTML and is escaped into `<pre>`. |
+| Markdown editing | Editing is available only for the currently open Markdown document in the current window. Blocks are edited in place: clicking a rendered block exposes only that block's Markdown source. |
+| Block mapping | Block-to-source mapping uses per-render random nonce attributes, so a document cannot forge mappings to make edits land on other lines. |
+| Saving | The renderer never supplies a save path; it can only ask the main process to save the owning window's active Markdown file. Saves happen after an explicit edit, content size is bounded at 20 MB, encoding/BOM/line endings are preserved, files that are not valid UTF-8 are refused (and read-only in the UI) so their characters are never corrupted, and writes are atomic: the main process writes to a temporary file and then renames it into place. If the file changed on disk while edits are pending, the user is warned before overwriting. |
+| Text/code viewer | Non-Markdown text and code files remain read-only. |
+| Folder navigation | Limited to locations reached by user navigation: the document folder, its tree, and the highest folder tree the user has moved up to. Arbitrary jumps and UNC paths are rejected. |
+| External links | Only `http:`, `https:`, and `mailto:` links are allowed, and they always open in the default browser through `shell.openExternal`. |
+| IPC | Handlers validate type and content and accept messages only from the main frame of the owning window. |
+| Network | No network request is needed to render a document. No font, CSS, or script is loaded from a CDN. Remote images may be blocked. |
+| Size | Files above 20 MB are rejected with an explanatory message. |
 
-## Copilot: injeção de prompt (XPIA)
+## Copilot: prompt injection (XPIA)
 
-O painel do Copilot envia um trecho do documento aberto como contexto. Como esse
-texto é não confiável, o app aplica defesa em profundidade:
+The Copilot panel sends a portion of the open document as context. Because that text
+is untrusted, the app applies defense in depth:
 
-- **Nenhuma aprovação automática.** O app não usa `approveAll`. Um handler próprio
-  aprova apenas **leitura de arquivos dentro da pasta do documento** e **nega** shell,
-  escrita, rede e MCP — mesmo que o modelo peça.
-- **Sem descoberta de configuração** (`enableConfigDiscovery: false`): instruções,
-  skills e servidores MCP da pasta do documento **não** são carregados.
-- **Contexto delimitado**: o trecho vai dentro de `<untrusted_document_content>`, com
-  instrução explícita de tratá-lo como dado, nunca como instrução. Tentativas de fechar
-  o delimitador são neutralizadas.
-- **Contexto vem do processo main**, não do renderer: um renderer comprometido não
-  escolhe qual arquivo ou pasta é enviado.
+- **No automatic approval.** The app does not use `approveAll`. A custom handler
+  approves only **file reads inside the document folder** and **denies** shell access,
+  writes, network access, and MCP access, even if the model asks for them.
+- **No configuration discovery** (`enableConfigDiscovery: false`): instructions,
+  skills, and MCP servers from the document folder are **not** loaded.
+- **Delimited context**: the excerpt is wrapped in `<untrusted_document_content>`,
+  with explicit instructions to treat it as data, never as an instruction. Attempts to
+  close the delimiter are neutralized.
+- **Context comes from the main process**, not from the renderer. A compromised
+  renderer cannot choose which file or folder is sent.
 
-> O conteúdo do documento e seu caminho são enviados ao serviço GitHub Copilot quando
-> você usa o painel. Se isso não for aceitável para um documento específico, não use o
-> painel com ele.
+> Document content and the document path are sent to the GitHub Copilot service when
+> you use the panel. If that is not acceptable for a specific document, do not use the
+> panel with that document.
 
-## Build não assinado
+## Unsigned builds
 
-Os binários gerados por `npm run dist` **não são assinados**. O SmartScreen exibirá um
-aviso na primeira execução. Verifique a política de software da sua organização antes
-de rodar em máquina corporativa, e prefira compilar você mesmo a partir do código.
+Binaries generated by `npm run dist` are **not signed**. SmartScreen may warn on first
+launch. Check your organization's software policy before running the app on a managed
+device, and prefer building locally from source when appropriate.
 
-## Reportando uma vulnerabilidade
+## Reporting a vulnerability
 
-Abra uma issue com o rótulo `security` descrevendo o problema e um passo a passo de
-reprodução. Para algo sensível, use o **Report a vulnerability** na aba *Security* do
-repositório em vez de uma issue pública.
+Open an issue with the `security` label that describes the problem and includes
+reproduction steps. For sensitive reports, use **Report a vulnerability** on the
+repository's *Security* tab instead of opening a public issue.

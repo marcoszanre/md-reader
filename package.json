@@ -1,9 +1,9 @@
 {
   "name": "mdreader",
   "version": "0.1.0",
-  "description": "Leitor de Markdown desktop para Windows",
+  "description": "Desktop Markdown reader for Windows",
   "main": "./out/main/index.js",
-  "author": "MD Reader",
+  "author": "MD Reader contributors",
   "license": "MIT",
   "private": true,
   "scripts": {

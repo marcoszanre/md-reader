@@ -1,99 +1,99 @@
 ---
-title: Documento de demonstração
-autor: MD Reader
-tags: [teste, markdown]
+title: Demo document
+author: MD Reader
+tags: [test, markdown]
 ---
 
-# Documento de demonstração
+# Demo document
 
-Este arquivo exercita todos os recursos suportados pelo **MD Reader**.
+This file exercises every feature supported by **MD Reader**.
 
-## Texto e listas
+## Text and lists
 
-Parágrafo com *itálico*, **negrito**, ~~riscado~~, `código inline` e um
-[link externo](https://commonmark.org) que abre no navegador padrão.
+Paragraph with *italic*, **bold**, ~~strikethrough~~, `inline code`, and an
+[external link](https://commonmark.org) that opens in the default browser.
 
-- Item de lista
-- Outro item
-  - Item aninhado
-- [x] Tarefa concluída
-- [ ] Tarefa pendente
+- List item
+- Another item
+  - Nested item
+- [x] Completed task
+- [ ] Pending task
 
-> Citação em bloco para verificar espaçamento e cor.
+> Block quote to verify spacing and color.
 
-## Tabela
+## Table
 
-| Recurso | Status | Observação |
+| Feature | Status | Notes |
 | --- | :---: | --- |
-| Tabelas | ✅ | GFM |
+| Tables | ✅ | GFM |
 | Task lists | ✅ | GFM |
-| Mermaid | ✅ | carregado sob demanda |
-| KaTeX | ✅ | carregado sob demanda |
+| Mermaid | ✅ | loaded on demand |
+| KaTeX | ✅ | loaded on demand |
 
-## Código
+## Code
 
 ```ts
-interface Documento {
-  caminho: string
-  conteudo: string
+interface Document {
+  path: string
+  content: string
 }
 
-export function abrir(doc: Documento): string {
-  return `${doc.caminho}: ${doc.conteudo.length} caracteres`
+export function open(doc: Document): string {
+  return `${doc.path}: ${doc.content.length} characters`
 }
 ```
 
 ```python
-def soma(a: int, b: int) -> int:
+def add(a: int, b: int) -> int:
     return a + b
 ```
 
-## Matemática
+## Math
 
-Inline: $E = mc^2$ e $\sum_{i=1}^{n} i = \frac{n(n+1)}{2}$.
+Inline: $E = mc^2$ and $\sum_{i=1}^{n} i = \frac{n(n+1)}{2}$.
 
-Bloco:
+Block:
 
 $$
 \int_{0}^{\infty} e^{-x^2}\,dx = \frac{\sqrt{\pi}}{2}
 $$
 
-## Diagrama válido
+## Valid diagram
 
 ```mermaid
 graph TD
-  A[Abrir .md] --> B{Tem mermaid?}
-  B -- sim --> C[Carregar mermaid]
-  B -- não --> D[Renderizar direto]
+  A[Open .md] --> B{Has Mermaid?}
+  B -- yes --> C[Load Mermaid]
+  B -- no --> D[Render directly]
   C --> D
 ```
 
-## Diagrama inválido (deve mostrar fallback)
+## Invalid diagram (should show fallback)
 
 ```mermaid
 graph TD
   A --> ((((
 ```
 
-## Imagens
+## Images
 
-Imagem local inexistente (deve degradar sem quebrar):
+Missing local image (should degrade without breaking):
 
-![local](./imagens/inexistente.png)
+![local](./images/missing.png)
 
-Imagem remota (deve ficar bloqueada por padrão):
+Remote image (should remain blocked by default):
 
-![remota](https://upload.wikimedia.org/wikipedia/commons/4/47/PNG_transparency_demonstration_1.png)
+![remote](https://upload.wikimedia.org/wikipedia/commons/4/47/PNG_transparency_demonstration_1.png)
 
-## HTML potencialmente malicioso
+## Potentially malicious HTML
 
-<div class="ok"><b>HTML benigno é preservado.</b></div>
+<div class="ok"><b>Benign HTML is preserved.</b></div>
 
 <script>alert('xss')</script>
 <img src=x onerror="alert('xss')">
-<iframe src="https://exemplo.com"></iframe>
+<iframe src="https://example.com"></iframe>
 
 ## Unicode
 
-日本語, português com acentuação, emoji 🎉🚀, e uma linha longa para testar a
-largura de leitura confortável definida em torno de 70 a 80 caracteres por linha.
+日本語, English with accents such as resume and facade, emoji 🎉🚀, and a long line
+to test the comfortable reading width set around 70 to 80 characters per line.

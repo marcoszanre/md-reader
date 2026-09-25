@@ -22,7 +22,7 @@ function normalizeSegments(parts: string[]): string[] {
   return out
 }
 
-/** Resolve um caminho relativo do documento sem depender do módulo `path`. */
+/** Resolves a document-relative path without depending on the `path` module. */
 export function resolveLocalPath(docDir: string, target: string): string {
   const clean = decodeURI(target.replace(/^file:\/\/\//i, '')).split('#')[0]!.split('?')[0]!
   if (isAbsoluteLocalPath(clean)) return clean.replace(/\\/g, '/')
@@ -32,14 +32,14 @@ export function resolveLocalPath(docDir: string, target: string): string {
   return [root, ...normalizeSegments(rest)].join('/')
 }
 
-/** Converte um caminho local absoluto na URL servida pelo protocolo `mdasset`. */
+/** Converts an absolute local path into the URL served by the `mdasset` protocol. */
 export function toAssetUrl(absolutePath: string): string {
   const normalized = absolutePath.replace(/\\/g, '/').replace(/^\/+/, '')
   const encoded = normalized.split('/').map(encodeURIComponent).join('/')
   return `mdasset://local/${encoded}`
 }
 
-/** Caminho de imagem do markdown → URL utilizável no renderer. */
+/** Markdown image path to a renderer-usable URL. */
 export function resolveAssetUrl(docDir: string, src: string): string {
   if (isRemoteUrl(src)) return src
   return toAssetUrl(resolveLocalPath(docDir, src))

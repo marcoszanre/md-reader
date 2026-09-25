@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="pt-BR">
+<html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta http-equiv="Content-Security-Policy" content="%CSP%" />
@@ -17,38 +17,38 @@
     </header>
 
     <div id="app">
-      <aside id="toc" class="toc" aria-label="Painel lateral">
+      <aside id="toc" class="toc" aria-label="Sidebar">
         <section id="panel-toc" class="side-section" style="flex: 0 0 55%">
-          <div class="side-header">Sumário</div>
+          <div class="side-header">Contents</div>
           <nav id="toc-list" class="toc-list"></nav>
         </section>
 
-        <div id="sidebar-resizer" class="sidebar-resizer" role="separator" aria-orientation="horizontal" title="Arraste para redimensionar"></div>
+        <div id="sidebar-resizer" class="sidebar-resizer" role="separator" aria-orientation="horizontal" title="Drag to resize"></div>
 
         <section id="panel-files" class="side-section">
           <div class="side-header">
-            <span>Arquivos</span>
-            <button id="files-up" type="button" title="Pasta acima">⬆</button>
+            <span>Files</span>
+            <button id="files-up" type="button" title="Parent folder" aria-label="Parent folder">⬆</button>
           </div>
           <div id="files-path" class="files-path"></div>
           <nav id="files-list" class="files-list"></nav>
         </section>
       </aside>
-      <div id="toc-resizer" class="toc-resizer" role="separator" aria-orientation="vertical" title="Arraste para redimensionar"></div>
+      <div id="toc-resizer" class="toc-resizer" role="separator" aria-orientation="vertical" title="Drag to resize"></div>
 
       <main id="main" class="main">
         <div id="search-bar" class="search-bar" hidden>
           <input
             id="search-input"
             type="search"
-            placeholder="Buscar no documento…"
+            placeholder="Find in document…"
             autocomplete="off"
             spellcheck="false"
           />
-          <span id="search-count" class="search-count">0 de 0</span>
-          <button id="search-prev" type="button" title="Anterior (Shift+Enter)">▲</button>
-          <button id="search-next" type="button" title="Próximo (Enter)">▼</button>
-          <button id="search-close" type="button" title="Fechar (Esc)">✕</button>
+          <span id="search-count" class="search-count">0 of 0</span>
+          <button id="search-prev" type="button" title="Previous match (Shift+Enter)" aria-label="Previous match">▲</button>
+          <button id="search-next" type="button" title="Next match (Enter)" aria-label="Next match">▼</button>
+          <button id="search-close" type="button" title="Close (Esc)" aria-label="Close search">✕</button>
         </div>
 
         <div id="notice" class="notice" hidden></div>
@@ -57,23 +57,26 @@
           <div class="empty-card">
             <div class="empty-icon">📄</div>
             <h1>MD Reader</h1>
-            <p>Arraste um arquivo <code>.md</code> aqui ou pressione <kbd>Ctrl</kbd>+<kbd>O</kbd>.</p>
-            <button id="empty-open" type="button">Abrir arquivo…</button>
+            <p>Drop a <code>.md</code> file or an image here, or press <kbd>Ctrl</kbd>+<kbd>O</kbd>.</p>
+            <button id="empty-open" type="button">Open file…</button>
             <div id="recent-list" class="recent-list"></div>
           </div>
         </div>
 
-        <div id="scroller" class="scroller" tabindex="0" hidden>
-          <article id="content" class="markdown-body"></article>
+        <div class="reader">
+          <div id="scroller" class="scroller" tabindex="0" hidden>
+            <article id="content" class="markdown-body"></article>
+          </div>
+          <div id="minimap" class="minimap" title="Minimap: click or drag to navigate" hidden></div>
         </div>
       </main>
 
       <aside id="copilot-panel" class="copilot-panel" hidden aria-label="Copilot">
         <header class="copilot-header">
           <span class="copilot-title">✦ Copilot</span>
-          <span class="copilot-model" id="copilot-model">claude-opus-5</span>
-          <button id="copilot-reset" type="button" title="Nova conversa">⟲</button>
-          <button id="copilot-close" type="button" title="Fechar (Ctrl+Shift+C)">✕</button>
+          <span class="copilot-model" id="copilot-model"></span>
+          <button id="copilot-reset" type="button" title="New conversation" aria-label="New conversation">⟲</button>
+          <button id="copilot-close" type="button" title="Close (Ctrl+Shift+C)" aria-label="Close Copilot">✕</button>
         </header>
         <div id="copilot-messages" class="copilot-messages"></div>
         <div id="copilot-suggestions" class="copilot-suggestions"></div>
@@ -81,39 +84,70 @@
           <textarea
             id="copilot-prompt"
             rows="2"
-            placeholder="Pergunte sobre este arquivo, a pasta ou busque na internet…"
+            placeholder="Ask about this file, its folder, or search the web…"
             spellcheck="false"
           ></textarea>
-          <button id="copilot-send" type="button" title="Enviar (Enter)">➤</button>
+          <button id="copilot-send" type="button" title="Send (Enter)" aria-label="Send">➤</button>
         </div>
       </aside>
     </div>
 
     <footer id="status-bar" class="status-bar">
       <span class="status-actions">
-        <button id="act-toc" class="icon-btn" type="button" title="Painel lateral (Ctrl+\)">☰</button>
-        <button id="act-back" class="icon-btn" type="button" title="Voltar (Alt+←)">←</button>
-        <button id="act-forward" class="icon-btn" type="button" title="Avançar (Alt+→)">→</button>
-        <button id="act-open" class="text-btn" type="button" title="Abrir arquivo (Ctrl+O)">📂 Abrir</button>
-        <button id="act-reload" class="icon-btn" type="button" title="Recarregar arquivo (F5)">⟳</button>
-        <button id="act-find" class="text-btn" type="button" title="Buscar (Ctrl+F)">🔍 Buscar</button>
+        <button id="act-toc" class="icon-btn" type="button" title="Toggle sidebar (Ctrl+\)" aria-label="Toggle sidebar">☰</button>
+        <button id="act-back" class="icon-btn" type="button" title="Back (Alt+←)" aria-label="Back">←</button>
+        <button id="act-forward" class="icon-btn" type="button" title="Forward (Alt+→)" aria-label="Forward">→</button>
+        <button id="act-open" class="text-btn" type="button" title="Open file (Ctrl+O)">📂 Open</button>
+        <button id="act-reload" class="icon-btn" type="button" title="Reload file (F5)" aria-label="Reload file">⟳</button>
+        <button id="act-find" class="text-btn" type="button" title="Find in document (Ctrl+F)">🔍 Find</button>
+        <button id="act-edit" class="text-btn" type="button" title="Edit this document (Ctrl+E)" disabled>✎ Edit</button>
+        <button
+          id="act-copy-source"
+          class="text-btn"
+          type="button"
+          title="Copy the full Markdown source to the clipboard (Ctrl+Shift+M)"
+          disabled
+        >
+          📋 Copy Markdown
+        </button>
       </span>
-      <span id="status-file" class="status-file">Nenhum arquivo aberto</span>
+      <span id="status-file" class="status-file">No file open</span>
+      <button
+        id="act-copy-path"
+        class="icon-btn copy-path-btn"
+        type="button"
+        title="Copy file path (Ctrl+Shift+P)"
+        aria-label="Copy file path"
+        disabled
+      >
+        ⧉
+      </button>
+      <span id="status-edit" class="status-edit" role="status" aria-live="polite" hidden></span>
       <span id="status-stats" class="status-stats"></span>
       <span class="status-right">
         <button id="act-copilot" class="text-btn accent" type="button" title="Copilot (Ctrl+Shift+C)">✦ Copilot</button>
-        <button id="theme-toggle" class="icon-btn" type="button" title="Alternar tema (Ctrl+Shift+T)">🌙</button>
-        <button id="width-toggle" class="icon-btn" type="button" title="Largura de leitura (Ctrl+Shift+W)">↔</button>
+        <button id="theme-toggle" class="icon-btn" type="button" title="Toggle theme (Ctrl+Shift+T)" aria-label="Toggle theme">🌙</button>
+        <button id="width-toggle" class="icon-btn" type="button" title="Toggle reading width (Ctrl+Shift+W)" aria-label="Toggle reading width">↔</button>
+        <button
+          id="minimap-toggle"
+          class="icon-btn"
+          type="button"
+          title="Toggle minimap (Ctrl+M)"
+          aria-label="Toggle minimap"
+          aria-pressed="true"
+        >
+          ▥
+        </button>
         <span class="zoom-group">
-          <button id="zoom-out" class="icon-btn" type="button" title="Diminuir zoom (Ctrl+-)">−</button>
-          <button id="status-zoom" class="icon-btn" type="button" title="Zoom padrão (Ctrl+0)">100%</button>
-          <button id="zoom-in" class="icon-btn" type="button" title="Aumentar zoom (Ctrl+=)">+</button>
+          <button id="zoom-out" class="icon-btn" type="button" title="Zoom out (Ctrl+-)" aria-label="Zoom out">−</button>
+          <button id="status-zoom" class="icon-btn" type="button" title="Reset zoom (Ctrl+0)" aria-label="Reset zoom">100%</button>
+          <button id="zoom-in" class="icon-btn" type="button" title="Zoom in (Ctrl+=)" aria-label="Zoom in">+</button>
         </span>
-        <button id="act-help" class="icon-btn" type="button" title="Atalhos de teclado">?</button>
+        <button id="act-help" class="icon-btn" type="button" title="Keyboard shortcuts" aria-label="Keyboard shortcuts">?</button>
       </span>
     </footer>
 
-    <div id="drop-overlay" class="drop-overlay" hidden>Solte o arquivo para abrir</div>
+    <div id="drop-overlay" class="drop-overlay" hidden>Drop the file to open it</div>
 
     <script type="module" src="./main.ts"></script>
   </body>

@@ -24,6 +24,10 @@ body[data-theme='dark'] {
   --scrollbar-thumb: #30363d;
   --scrollbar-thumb-hover: #4b5563;
   --scrollbar-track: transparent;
+  --minimap-edge: rgba(240, 246, 252, 0.06);
+  --edit-hover: rgba(139, 124, 246, 0.07);
+  --edit-active: rgba(139, 124, 246, 0.09);
+  --edit-ring: rgba(139, 124, 246, 0.45);
 }
 
 body[data-theme='dark'] .hljs-comment,
